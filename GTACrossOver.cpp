@@ -113,9 +113,11 @@ void GTACrossOver::PopulateProcessList() {
     PROCESSENTRY32 pe32 = { sizeof(pe32) };
     if (Process32First(hSnapshot, &pe32)) {
         do {
-            if (_wcsicmp(pe32.szExeFile, L"GTA5.exe") == 0) { // Match GTA5.exe
-                gtaProcesses.emplace_back(pe32.szExeFile, pe32.th32ProcessID);
-                SendMessage(hwndCombo, CB_ADDSTRING, 0, (LPARAM)pe32.szExeFile);
+            // Check for both Steam ("GTA5.exe") and Epic Games ("GTAV_BE.exe") versions
+            if (_wcsicmp(pe32.szExeFile, L"GTA5.exe") == 0 || _wcsicmp(pe32.szExeFile, L"GTAV_BE.exe") == 0) {
+                std::wstring displayName = (_wcsicmp(pe32.szExeFile, L"GTA5.exe") == 0) ? L"GTA 5 (Steam)" : L"GTA 5 (Epic Games)";
+                gtaProcesses.emplace_back(displayName, pe32.th32ProcessID);
+                SendMessage(hwndCombo, CB_ADDSTRING, 0, (LPARAM)displayName.c_str());
             }
         } while (Process32Next(hSnapshot, &pe32));
     }
@@ -145,6 +147,7 @@ void GTACrossOver::FindGTAWindow(DWORD pid) {
             if (_wcsicmp(title, L"Grand Theft Auto V") == 0) {
                 pData->hwnd = hwnd;
                 return FALSE; // Stop enumeration
+                teachers
             }
         }
         return TRUE; // Continue enumeration
@@ -161,7 +164,7 @@ void GTACrossOver::UpdateOverlayPosition() {
 
     // Get GTA 5 window dimensions
     RECT gtaRect;
-    GetWindowRect(hwndGTA, &gtaRect);
+    GetWindowRect(hwndGTA, > aRect);
 
     // Calculate the center of the GTA 5 window
     int gtaWidth = gtaRect.right - gtaRect.left;
