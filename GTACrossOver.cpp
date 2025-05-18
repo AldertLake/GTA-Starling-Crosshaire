@@ -1,7 +1,8 @@
 #include "GTACrossOver.h"
 #include <iostream>
 
-GTACrossOver::GTACrossOver() : hwndOverlay(nullptr), hwndGTA(nullptr) {
+GTACrossOver::GTACrossOver() : hwndMain(nullptr), hwndOverlay(nullptr), hwndCombo(nullptr),
+hwndStart(nullptr), hwndStop(nullptr), hwndGTA(nullptr), isOverlayActive(false) {
     // Initialize GDI+
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
 }
@@ -10,27 +11,86 @@ GTACrossOver::~GTACrossOver() {
     // Shutdown GDI+
     Gdiplus::GdiplusShutdown(gdiplusToken);
 
-    // Destroy the overlay window
-    if (hwndOverlay) {
-        DestroyWindow(hwndOverlay);
+    // Destroy windows
+    if (hwndOverlay) DestroyWindow(hwndOverlay);
+    if (hwndMain) DestroyWindow(hwndMain);
+}
+
+void GTACrossOver::CreateMainWindow() {
+    // Register the main window class
+    WNDCLASS wc = { 0 };
+    wc.lpfnWndProc = WndProcMain;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = L"GTACrossOverMainWindow";
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    RegisterClass(&wc);
+
+    // Create the main window
+    hwndMain = CreateWindow(
+        L"GTACrossOverMainWindow",
+        L"GTA Crosshair Overlay",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, // Simple window with title bar
+        CW_USEDEFAULT, CW_USEDEFAULT, 300, 150, // Size of the main window
+        nullptr, nullptr,
+        GetModuleHandle(nullptr),
+        this
+    );
+
+    if (!hwndMain) {
+        std::cerr << "Failed to create main window!" << std::endl;
+        return;
     }
+
+    // Create the combo box for process selection
+    hwndCombo = CreateWindow(
+        L"COMBOBOX", nullptr,
+        WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS,
+        10, 10, 260, 100,
+        hwndMain, (HMENU)1001,
+        GetModuleHandle(nullptr), nullptr
+    );
+
+    // Create the Start button
+    hwndStart = CreateWindow(
+        L"BUTTON", L"Start",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        10, 50, 120, 30,
+        hwndMain, (HMENU)1002,
+        GetModuleHandle(nullptr), nullptr
+    );
+
+    // Create the Stop button
+    hwndStop = CreateWindow(
+        L"BUTTON", L"Stop",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        150, 50, 120, 30,
+        hwndMain, (HMENU)1003,
+        GetModuleHandle(nullptr), nullptr
+    );
+
+    // Disable the Stop button initially
+    EnableWindow(hwndStop, FALSE);
+
+    // Show the main window
+    ShowWindow(hwndMain, SW_SHOW);
+    UpdateWindow(hwndMain);
 }
 
 void GTACrossOver::CreateOverlayWindow() {
-    // Register the window class
+    // Register the overlay window class
     WNDCLASS wc = { 0 };
-    wc.lpfnWndProc = WndProc;
+    wc.lpfnWndProc = WndProcOverlay;
     wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = L"GTACrossOverWindow";
+    wc.lpszClassName = L"GTACrossOverOverlayWindow";
     RegisterClass(&wc);
 
-    // Create a layered window (for transparency)
+    // Create the overlay window (layered, topmost, click-through)
     hwndOverlay = CreateWindowEx(
-        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT, // Extended style: layered, topmost, click-through
-        L"GTACrossOverWindow",
+        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+        L"GTACrossOverOverlayWindow",
         L"GTA Crosshair Overlay",
-        WS_POPUP, // No window chrome
-        0, 0, 200, 200, // Initial size/position (will be adjusted later)
+        WS_POPUP,
+        0, 0, 200, 200,
         nullptr, nullptr,
         GetModuleHandle(nullptr),
         this
@@ -40,21 +100,64 @@ void GTACrossOver::CreateOverlayWindow() {
         std::cerr << "Failed to create overlay window!" << std::endl;
         return;
     }
-
-    // Make the window initially invisible
-    ShowWindow(hwndOverlay, SW_SHOW);
 }
 
-void GTACrossOver::FindGTAWindow() {
-    // Find the GTA 5 window by its title
-    hwndGTA = FindWindow(nullptr, L"Grand Theft Auto V");
+void GTACrossOver::PopulateProcessList() {
+    gtaProcesses.clear();
+    SendMessage(hwndCombo, CB_RESETCONTENT, 0, 0); // Clear the combo box
+
+    // Enumerate running processes
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) return;
+
+    PROCESSENTRY32 pe32 = { sizeof(pe32) };
+    if (Process32First(hSnapshot, &pe32)) {
+        do {
+            if (_wcsicmp(pe32.szExeFile, L"GTA5.exe") == 0) { // Match GTA5.exe
+                gtaProcesses.emplace_back(pe32.szExeFile, pe32.th32ProcessID);
+                SendMessage(hwndCombo, CB_ADDSTRING, 0, (LPARAM)pe32.szExeFile);
+            }
+        } while (Process32Next(hSnapshot, &pe32));
+    }
+
+    CloseHandle(hSnapshot);
+
+    // Select the first item if available
+    if (!gtaProcesses.empty()) {
+        SendMessage(hwndCombo, CB_SETCURSEL, 0, 0);
+    }
+}
+
+void GTACrossOver::FindGTAWindow(DWORD pid) {
+    hwndGTA = nullptr;
+
+    // Find a window associated with the process ID
+    struct EnumData { DWORD pid; HWND hwnd; };
+    EnumData data = { pid, nullptr };
+
+    EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
+        EnumData* pData = (EnumData*)lParam;
+        DWORD windowPid;
+        GetWindowThreadProcessId(hwnd, &windowPid);
+        if (windowPid == pData->pid && GetWindow(hwnd, GW_OWNER) == nullptr && IsWindowVisible(hwnd)) {
+            WCHAR title[256];
+            GetWindowText(hwnd, title, 256);
+            if (_wcsicmp(title, L"Grand Theft Auto V") == 0) {
+                pData->hwnd = hwnd;
+                return FALSE; // Stop enumeration
+            }
+        }
+        return TRUE; // Continue enumeration
+        }, (LPARAM)&data);
+
+    hwndGTA = data.hwnd;
     if (!hwndGTA) {
-        std::cerr << "GTA 5 window not found!" << std::endl;
+        std::cerr << "GTA 5 window not found for the selected process!" << std::endl;
     }
 }
 
 void GTACrossOver::UpdateOverlayPosition() {
-    if (!hwndGTA) return;
+    if (!hwndGTA || !isOverlayActive) return;
 
     // Get GTA 5 window dimensions
     RECT gtaRect;
@@ -63,9 +166,9 @@ void GTACrossOver::UpdateOverlayPosition() {
     // Calculate the center of the GTA 5 window
     int gtaWidth = gtaRect.right - gtaRect.left;
     int gtaHeight = gtaRect.bottom - gtaRect.top;
-    int crosshairSize = 100; // Size of the crosshair square
+    int crosshairSize = 100;
 
-    // Position the overlay window at the center of the GTA 5 window
+    // Position the overlay window at the center
     int posX = gtaRect.left + (gtaWidth - crosshairSize) / 2;
     int posY = gtaRect.top + (gtaHeight - crosshairSize) / 2;
 
@@ -74,24 +177,91 @@ void GTACrossOver::UpdateOverlayPosition() {
 }
 
 void GTACrossOver::DrawCrosshair(HDC hdc) {
-    // Use GDI+ to draw the crosshair
     Gdiplus::Graphics graphics(hdc);
-
-    // Create a slightly transparent red pen for the frame
     Gdiplus::Pen pen(Gdiplus::Color(200, 255, 0, 0), 3.0f); // Red with alpha 200
     pen.SetLineJoin(Gdiplus::LineJoinRound); // Rounded corners
 
-    // Draw a rectangular frame (crosshair)
-    int width = 100, height = 100; // Match the window size
+    int width = 100, height = 100;
     Gdiplus::Rect rect(0, 0, width - 1, height - 1);
     graphics.DrawRectangle(&pen, rect);
 }
 
-LRESULT CALLBACK GTACrossOver::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+void GTACrossOver::StartOverlay() {
+    if (isOverlayActive) return;
+
+    // Get the selected process
+    int selectedIndex = (int)SendMessage(hwndCombo, CB_GETCURSEL, 0, 0);
+    if (selectedIndex == CB_ERR || selectedIndex >= gtaProcesses.size()) {
+        MessageBox(hwndMain, L"Please select a GTA V process!", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    DWORD pid = gtaProcesses[selectedIndex].second;
+    FindGTAWindow(pid);
+    if (!hwndGTA) {
+        MessageBox(hwndMain, L"GTA V window not found!", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // Show the overlay window
+    isOverlayActive = true;
+    ShowWindow(hwndOverlay, SW_SHOW);
+
+    // Update UI
+    EnableWindow(hwndStart, FALSE);
+    EnableWindow(hwndStop, TRUE);
+}
+
+void GTACrossOver::StopOverlay() {
+    if (!isOverlayActive) return;
+
+    // Hide the overlay window
+    isOverlayActive = false;
+    ShowWindow(hwndOverlay, SW_HIDE);
+    hwndGTA = nullptr;
+
+    // Update UI
+    EnableWindow(hwndStart, TRUE);
+    EnableWindow(hwndStop, FALSE);
+}
+
+LRESULT CALLBACK GTACrossOver::WndProcMain(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     GTACrossOver* pThis = nullptr;
 
     if (msg == WM_CREATE) {
-        // Store the 'this' pointer in the window's user data
+        pThis = reinterpret_cast<GTACrossOver*>(((CREATESTRUCT*)lParam)->lpCreateParams);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+    }
+    else {
+        pThis = reinterpret_cast<GTACrossOver*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
+
+    if (pThis) {
+        switch (msg) {
+        case WM_CREATE:
+            pThis->PopulateProcessList();
+            return 0;
+        case WM_COMMAND:
+            if (LOWORD(wParam) == 1002) { // Start button
+                pThis->StartOverlay();
+            }
+            else if (LOWORD(wParam) == 1003) { // Stop button
+                pThis->StopOverlay();
+            }
+            return 0;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        }
+    }
+
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK GTACrossOver::WndProcOverlay(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    GTACrossOver* pThis = nullptr;
+
+    if (msg == WM_CREATE) {
         pThis = reinterpret_cast<GTACrossOver*>(((CREATESTRUCT*)lParam)->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
     }
@@ -108,9 +278,6 @@ LRESULT CALLBACK GTACrossOver::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             EndPaint(hwnd, &ps);
             return 0;
         }
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
         }
     }
 
@@ -118,22 +285,23 @@ LRESULT CALLBACK GTACrossOver::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 }
 
 void GTACrossOver::Run() {
-    // Create the overlay window
+    // Create the windows
+    CreateMainWindow();
+    if (!hwndMain) return;
+
     CreateOverlayWindow();
     if (!hwndOverlay) return;
-
-    // Find the GTA 5 window
-    FindGTAWindow();
-    if (!hwndGTA) return;
 
     // Main message loop
     MSG msg = { 0 };
     while (GetMessage(&msg, nullptr, 0, 0)) {
-        // Update the overlay position dynamically
-        UpdateOverlayPosition();
+        if (IsDialogMessage(hwndMain, &msg)) continue; // Handle dialog messages for combo box
 
-        // Redraw the window
-        InvalidateRect(hwndOverlay, nullptr, TRUE);
+        // Update the overlay position if active
+        if (isOverlayActive) {
+            UpdateOverlayPosition();
+            InvalidateRect(hwndOverlay, nullptr, TRUE);
+        }
 
         TranslateMessage(&msg);
         DispatchMessage(&msg);

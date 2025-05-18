@@ -1,6 +1,9 @@
 #pragma once
 #include <windows.h>
 #include <gdiplus.h>
+#include <tlhelp32.h>
+#include <vector>
+#include <string>
 #pragma comment(lib, "gdiplus.lib")
 
 class GTACrossOver {
@@ -10,14 +13,25 @@ public:
     void Run();
 
 private:
-    HWND hwndOverlay; // Handle to the overlay window
-    HWND hwndGTA;     // Handle to the GTA 5 window
+    HWND hwndMain;   
+    HWND hwndOverlay; 
+    HWND hwndCombo;   
+    HWND hwndStart;   
+    HWND hwndStop;    
+    HWND hwndGTA;     
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
+    bool isOverlayActive; 
+    std::vector<std::pair<std::wstring, DWORD>> gtaProcesses; 
 
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK WndProcMain(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK WndProcOverlay(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    void CreateMainWindow();
     void CreateOverlayWindow();
-    void FindGTAWindow();
+    void PopulateProcessList();
+    void FindGTAWindow(DWORD pid);
     void UpdateOverlayPosition();
     void DrawCrosshair(HDC hdc);
+    void StartOverlay();
+    void StopOverlay();
 };
