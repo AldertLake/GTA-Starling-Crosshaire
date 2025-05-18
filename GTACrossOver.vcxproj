@@ -130,11 +130,13 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="GTACrossOver.h" />
+    <ClInclude Include="OverlayDrawer.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GTACrossOver.cpp" />
+    <ClCompile Include="OverlayDrawer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GTACrossOver.rc" />

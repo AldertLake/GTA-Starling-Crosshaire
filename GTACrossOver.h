@@ -1,37 +1,35 @@
 #pragma once
+#include "OverlayDrawer.h"
 #include <windows.h>
 #include <gdiplus.h>
 #include <tlhelp32.h>
-#include <vector>
 #include <string>
-#pragma comment(lib, "gdiplus.lib")
 
 class GTACrossOver {
 public:
     GTACrossOver();
     ~GTACrossOver();
+    void CreateMainWindow();
+    void UpdateGTAStatus();
+    void StartOverlay();
+    void StopOverlay();
     void Run();
 
 private:
-    HWND hwndMain;    // Main window with UI
-    HWND hwndOverlay; // Overlay window for crosshair
-    HWND hwndCombo;   // Combo box for process selection
-    HWND hwndStart;   // Start button
-    HWND hwndStop;    // Stop button
-    HWND hwndGTA;     // Handle to the GTA 5 window
+    HWND hwndMain;
+    HWND hwndStatus;
+    HWND hwndStart;
+    HWND hwndStop;
+    HWND hwndModeSelect; // Restore display mode selection
+    HWND hwndGTA;
+    bool isOverlayActive;
+    bool isGTARunning;
+    OverlayDrawer overlayDrawer;
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
-    bool isOverlayActive; // Tracks if the overlay is active
-    std::vector<std::pair<std::wstring, DWORD>> gtaProcesses; // List of GTA V processes
+    DisplayMode currentMode; // Restore display mode
 
-    static LRESULT CALLBACK WndProcMain(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    static LRESULT CALLBACK WndProcOverlay(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    void CreateMainWindow();
-    void CreateOverlayWindow();
-    void PopulateProcessList();
+    DWORD FindGTAProcess();
     void FindGTAWindow(DWORD pid);
-    void UpdateOverlayPosition();
-    void DrawCrosshair(HDC hdc);
-    void StartOverlay();
-    void StopOverlay();
+    static LRESULT CALLBACK WndProcMain(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 };

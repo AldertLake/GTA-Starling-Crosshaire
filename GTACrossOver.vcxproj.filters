@@ -27,9 +27,15 @@
     <ClInclude Include="GTACrossOver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OverlayDrawer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GTACrossOver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OverlayDrawer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
