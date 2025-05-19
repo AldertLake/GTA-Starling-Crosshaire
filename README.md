@@ -20,8 +20,8 @@ This lightweight `C++` application adds a custom crosshair overlay to **GTA Onli
 #### This is how the aiming crosshair look like in-game using the starling
 
 
-<img src="https://github.com/user-attachments/assets/c14f526b-7c0e-4a40-8b6c-1d966eb0cdeb" width="515">
-<img src="https://github.com/user-attachments/assets/5d636659-2cbf-4cd2-98a4-fc92aa69e3b1" width="350">
+<img src="https://github.com/user-attachments/assets/c14f526b-7c0e-4a40-8b6c-1d966eb0cdeb" width="485">
+<img src="https://github.com/user-attachments/assets/5d636659-2cbf-4cd2-98a4-fc92aa69e3b1" width="330">
 
 
 ## Tutorial:
