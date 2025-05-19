@@ -25,9 +25,9 @@ void GTACrossOver::CreateMainWindow() {
 
     hwndMain = CreateWindow(
         L"GTACrossOverMainWindow",
-        L"GTA V Overlay",
+        L"GTA V Crosshair For LF-22 Starling",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 300, 200, // Height adjusted for dropdown
+        CW_USEDEFAULT, CW_USEDEFAULT, 300, 160, // Height adjusted for dropdown
         nullptr, nullptr,
         GetModuleHandle(nullptr),
         this
