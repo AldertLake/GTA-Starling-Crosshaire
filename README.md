@@ -5,7 +5,21 @@
 This lightweight `C++` application adds a custom crosshair overlay to **GTA Online** for improved missile aiming with the `LF-22` Starling in first-person view. The overlay is non-intrusive, always on top, and designed to help players align shots more accurately, especially when using the jet’s unguided missiles.
 
 
-<img src="https://github.com/user-attachments/assets/c14f526b-7c0e-4a40-8b6c-1d966eb0cdeb" width="400">
+<img src="https://github.com/user-attachments/assets/c14f526b-7c0e-4a40-8b6c-1d966eb0cdeb" width="515">
+<img src="https://github.com/user-attachments/assets/5d636659-2cbf-4cd2-98a4-fc92aa69e3b1" width="350">
+
+
+
+
+
+![GrandTheftAutoV_2025 05 19-17online-video-cutter com-ezgif com-optimize](https://github.com/user-attachments/assets/73dc151b-75a2-49c8-a46e-48d870f124d7)
+
+
+
+![{84642B8C-1516-41FF-8E9C-8A1F2E867B4F}](https://github.com/user-attachments/assets/03c0c861-3e5b-4df6-b5b0-7c02514862de)
+
+
+
 
 ## Features
 
